@@ -22,6 +22,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "postbuild": "npm run check:exports",
     "build": "tsup src/index.ts --config tsup.config.ts",
@@ -63,17 +64,8 @@
     "npm-run-all": "^4.1.5",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5",
-    "vitest": "^1.5.2"
-  },
-  "optionalDependencies": {
-    "@rollup/rollup-darwin-x64-gnu": "4.18.1",
-    "@rollup/rollup-darwin-x64-musl": "4.18.1",
-    "@rollup/rollup-linux-arm64-gnu": "4.18.1",
-    "@rollup/rollup-linux-x64-gnu": "^4.18.1",
-    "@rollup/rollup-linux-x64-musl": "^4.18.1",
-    "@rollup/rollup-win32-arm64-msvc": "4.18.1",
-    "@rollup/rollup-win32-x64-msvc": "4.18.1",
-    "@rollup/rollup-win32-x64-musl": "4.18.1"
+    "vitest": "^1.5.2",
+    "zod": "^3.23.8"
   },
   "engines": {
     "node": ">=20.0.0"

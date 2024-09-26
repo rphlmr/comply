@@ -22,7 +22,9 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "recommended": true
+        "recommended": true,
+        "noExplicitAny": "off",
+        "noConfusingVoidType": "off"
       },
       "style": {
         "recommended": true,
