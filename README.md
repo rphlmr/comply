@@ -7,6 +7,62 @@
 ![npm](https://img.shields.io/npm/dw/open-source-stack?style=plastic)
 ![GitHub top language](https://img.shields.io/github/languages/top/rphlmr/comply?style=plastic)
 
+# Features
+TODO with better examples
+
+## Define a policy
+```ts
+import { definePolicy } from "comply";
+
+const policy = definePolicy(
+  "has items",
+  (arr: unknown[]) => arr.length > 0,
+  () => new Error("Array is empty")
+);
+```
+
+## Check a policy
+```ts
+import { check } from "comply";
+
+check(policy, []); // false
+check(policy, [1]); // true
+```
+
+## Assert a policy
+```ts
+import { assert } from "comply";
+
+assert(policy, []); // throws an error
+assert(policy, [1]); // does not throw an error
+```
+
+## Define policies
+```ts
+import { definePolicies } from "comply";
+
+const arrayPolicies = definePolicies(() => {
+  return [
+    definePolicy(
+      "has items",
+      (arr: unknown[]) => arr.length > 0,
+      () => new Error("Array is empty")
+    ),
+  ];
+});
+
+function Guard(){
+	return {
+		array: arrayPolicies()
+	}
+}
+
+check(array.policy("has items"), []); // false
+check(array.policy("has items"), [1]); // true
+
+assert(array.policy("has items"), []); // throws an error
+assert(array.policy("has items"), [1]); // does not throw an error
+```
 
 ## Scripts
 
