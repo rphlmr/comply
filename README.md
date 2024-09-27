@@ -44,17 +44,10 @@ const UserPolicies = definePolicies((context: MyContext) => (userId: string) => 
   definePolicy("can edit profile", () => context.userId === userId),
 ]);
 
-const ParamsPolicies = definePolicies([
-  definePolicy("is not null", notNull),
-  definePolicy("is a string", (v: unknown): v is string => typeof v === "string"),
-  definePolicy('route x params are valid', matchSchema(z.object({ name: z.string() })))
-]);
-
 // create and export a 'guard' that contains all your policies, scoped by domain
 export const Guard = (context: MyContext) => ({
   org: OrgPolicies(context),
   user: UserPolicies(context),
-  params: ParamsPolicies,
 });
 ```
 
