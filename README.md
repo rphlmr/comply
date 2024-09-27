@@ -1,5 +1,12 @@
 # Comply
 
+![GitHub Repo stars](https://img.shields.io/github/stars/rphlmr/comply?style=social)
+![npm](https://img.shields.io/npm/v/comply?style=plastic)
+![GitHub](https://img.shields.io/github/license/rphlmr/comply?style=plastic)
+![npm](https://img.shields.io/npm/dy/comply?style=plastic)
+![npm](https://img.shields.io/npm/dw/comply?style=plastic)
+![GitHub top language](https://img.shields.io/github/languages/top/rphlmr/comply?style=plastic)
+
 This library provides a simple way to define and enforce policies within your application. Policies are defined as a set of rules that determine whether a specific action can be performed based on a given context.
 
 The API surface is small:
