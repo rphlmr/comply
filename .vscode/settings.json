@@ -32,5 +32,8 @@
   "eslint.format.enable": false,
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "yzhang.markdown-all-in-one"
   }
 }
