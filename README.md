@@ -110,7 +110,7 @@ _Primary use case_: simple policies that can be defined inline and are 'self-con
 const policies = definePolicies([
   definePolicy("is not null", notNull),
   definePolicy("is a string", (v: unknown): v is string => typeof v === "string"),
-  definePolicy('comply with schema', complyWithSchema(z.object({ name: z.string() })))
+  definePolicy('params are valid', matchSchema(z.object({ name: z.string() })))
 ]);
 ```
 
@@ -124,10 +124,10 @@ The primary purpose of this is to simplify the definition of policies that depen
 Here's a quick example:
 ```typescript
 // 1️⃣
-type Context = { userId: string; rolesByOrg: Record<string, "user" | "admin" | "superadmin"> };
+type Context = { userId: string; rolesByOrg: Record<string, "user" | "admin" | "superadmin">; appRole: "admin" | "user" };
 
 const AdminPolicies = definePolicies((context: Context) => [
-  definePolicy("has admin role", () => context.role === "admin"),
+  definePolicy("has app admin role", () => context.appRole === "admin"),
 ]);
 
 // 2️⃣
@@ -140,7 +140,7 @@ const OrgPolicies = definePolicies((context: MyContext) => (orgId: string) => {
       or(
         () => currentUserOrgRole === "admin",
         () => currentUserOrgRole === "superadmin",
-        () => check(adminGuard.policy("has admin role"))
+        () => check(adminGuard.policy("has app admin role"))
     ),
     definePolicy("is superadmin", () => currentUserOrgRole === "superadmin"),
   ];
