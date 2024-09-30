@@ -916,6 +916,7 @@ describe("Check all settle", () => {
       [definePolicy("is not null", notNull), "not null"],
       [definePolicy("is true", true)],
       ["post has comments", true],
+      ["post has likes", () => true],
       [guard.post.policy("my post"), { userId: "1", comments: [], status: "published" }],
       [guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "published" }],
     ]);
@@ -924,6 +925,7 @@ describe("Check all settle", () => {
       "is not null": true,
       "is true": true,
       "post has comments": true,
+      "post has likes": true,
       "my post": true,
       "all my published posts": true,
     });
@@ -932,6 +934,7 @@ describe("Check all settle", () => {
       "is not null": boolean;
       "is true": boolean;
       "post has comments": boolean;
+      "post has likes": boolean;
       "my post": boolean;
       "all my published posts": boolean;
     }>();
