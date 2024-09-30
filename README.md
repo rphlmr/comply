@@ -85,11 +85,15 @@ If the condition requires a parameter, `assert` and `check` will require it.
 
 Finally, if the condition is a type guard, the parameter you pass will be inferred automatically.
 
-Note: for convenience, the condition can be a boolean value but you will lose type inference.
-
 ## Defining Policies
 To define policies, you create a policy set using the `definePolicies` function.
 Each policy definition is created using the `definePolicy` function, which takes a policy name and a callback that defines the policy logic (or a boolean value).
+
+> [!IMPORTANT]  
+> For convenience, the condition can be a boolean value but **you will lose type inference**
+>
+> If you want TS to infer something (not null, union, etc), use a condition function
+
 The callback logic can receive a unique parameter (scalar or object) and return a boolean value or a a type predicate.
 
 You can also provide an error factory to the policy (3rd argument) to customize the error message.
@@ -141,7 +145,7 @@ const OrgPolicies = definePolicies((context: MyContext) => (orgId: string) => {
         () => currentUserOrgRole === "superadmin",
         () => check(adminGuard.policy("has app admin role"))
     ),
-    definePolicy("is superadmin", currentUserOrgRole === "superadmin"), // lazy evaluation
+    definePolicy("is superadmin", () => currentUserOrgRole === "superadmin"),
   ];
 });
 
