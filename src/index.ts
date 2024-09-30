@@ -279,9 +279,12 @@ export function definePolicies<Context, T extends PoliciesOrFactory>(defineOrPol
  *```
  */
 export function or(
-  ...conditions: (() => Policy<PolicyName, PolicyCondition, PolicyConditionArg<PolicyCondition>> | boolean)[]
+  ...conditions: (
+    | (() => Policy<PolicyName, PolicyCondition, PolicyConditionArg<PolicyCondition>> | boolean)
+    | boolean
+  )[]
 ) {
-  return conditions.some((predicate) => predicate());
+  return conditions.some((predicate) => (typeof predicate === "function" ? predicate() : predicate));
 }
 
 /**
@@ -322,9 +325,12 @@ export function or(
  *```
  */
 export function and(
-  ...conditions: (() => Policy<PolicyName, PolicyCondition, PolicyConditionArg<PolicyCondition>> | boolean)[]
+  ...conditions: (
+    | (() => Policy<PolicyName, PolicyCondition, PolicyConditionArg<PolicyCondition>> | boolean)
+    | boolean
+  )[]
 ) {
-  return conditions.every((predicate) => predicate());
+  return conditions.every((predicate) => (typeof predicate === "function" ? predicate() : predicate));
 }
 
 /* -------------------------------------------------------------------------- */

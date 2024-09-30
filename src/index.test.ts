@@ -620,3 +620,210 @@ describe("Inference", () => {
     }
   });
 });
+
+describe("Logical operators", () => {
+  type Context = { userId: string };
+  type Post = { userId: string; comments: string[]; status: "published" | "draft" | "archived" };
+
+  it("should [or] accept predicates", () => {
+    const PostPolicies = definePolicies((context: Context) => {
+      const myPostPolicy = definePolicy(
+        "my post",
+        (post: Post) => post.userId === context.userId,
+        () => new Error("Not the author")
+      );
+
+      return [
+        myPostPolicy,
+        definePolicy("all published posts or mine", (post: Post) =>
+          or(
+            () => check(myPostPolicy, post),
+            () => post.status === "published"
+          )
+        ),
+      ];
+    });
+
+    const guard = {
+      post: PostPolicies({ userId: "1" }),
+    };
+
+    expect(
+      check(guard.post.policy("all published posts or mine"), { userId: "1", comments: [], status: "draft" })
+    ).toBe(true);
+    expect(
+      check(guard.post.policy("all published posts or mine"), {
+        userId: "2",
+        comments: [],
+        status: "published",
+      })
+    ).toBe(true);
+    expect(
+      check(guard.post.policy("all published posts or mine"), { userId: "2", comments: [], status: "draft" })
+    ).toBe(false);
+
+    expect(() =>
+      assert(guard.post.policy("all published posts or mine"), { userId: "1", comments: [], status: "draft" })
+    ).not.toThrowError();
+    expect(() =>
+      assert(guard.post.policy("all published posts or mine"), {
+        userId: "2",
+        comments: [],
+        status: "published",
+      })
+    ).not.toThrowError();
+    expect(() =>
+      assert(guard.post.policy("all published posts or mine"), { userId: "2", comments: [], status: "draft" })
+    ).toThrowError();
+  });
+
+  it("should [or] accept booleans", () => {
+    const PostPolicies = definePolicies((context: Context) => {
+      const myPostPolicy = definePolicy(
+        "my post",
+        (post: Post) => post.userId === context.userId,
+        () => new Error("Not the author")
+      );
+
+      return [
+        myPostPolicy,
+        definePolicy("all published posts or mine", (post: Post) =>
+          or(check(myPostPolicy, post), post.status === "published")
+        ),
+      ];
+    });
+
+    const guard = {
+      post: PostPolicies({ userId: "1" }),
+    };
+
+    expect(
+      check(guard.post.policy("all published posts or mine"), { userId: "1", comments: [], status: "draft" })
+    ).toBe(true);
+    expect(
+      check(guard.post.policy("all published posts or mine"), {
+        userId: "2",
+        comments: [],
+        status: "published",
+      })
+    ).toBe(true);
+    expect(
+      check(guard.post.policy("all published posts or mine"), { userId: "2", comments: [], status: "draft" })
+    ).toBe(false);
+
+    expect(() =>
+      assert(guard.post.policy("all published posts or mine"), { userId: "1", comments: [], status: "draft" })
+    ).not.toThrowError();
+    expect(() =>
+      assert(guard.post.policy("all published posts or mine"), {
+        userId: "2",
+        comments: [],
+        status: "published",
+      })
+    ).not.toThrowError();
+    expect(() =>
+      assert(guard.post.policy("all published posts or mine"), { userId: "2", comments: [], status: "draft" })
+    ).toThrowError();
+  });
+
+  it("should [and] accept predicates", () => {
+    const PostPolicies = definePolicies((context: Context) => {
+      const myPostPolicy = definePolicy(
+        "my post",
+        (post: Post) => post.userId === context.userId,
+        () => new Error("Not the author")
+      );
+
+      return [
+        myPostPolicy,
+        definePolicy("all my published posts", (post: Post) =>
+          and(
+            () => check(myPostPolicy, post),
+            () => post.status === "published"
+          )
+        ),
+      ];
+    });
+
+    const guard = {
+      post: PostPolicies({ userId: "1" }),
+    };
+
+    expect(check(guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "published" })).toBe(
+      true
+    );
+    expect(check(guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "draft" })).toBe(
+      false
+    );
+    expect(
+      check(guard.post.policy("all my published posts"), {
+        userId: "2",
+        comments: [],
+        status: "published",
+      })
+    ).toBe(false);
+
+    expect(() =>
+      assert(guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "published" })
+    ).not.toThrowError();
+    expect(() =>
+      assert(guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "draft" })
+    ).toThrowError();
+    expect(() =>
+      assert(guard.post.policy("all my published posts"), {
+        userId: "2",
+        comments: [],
+        status: "published",
+      })
+    ).toThrowError();
+  });
+
+  it("should [and] accept booleans", () => {
+    const PostPolicies = definePolicies((context: Context) => {
+      const myPostPolicy = definePolicy(
+        "my post",
+        (post: Post) => post.userId === context.userId,
+        () => new Error("Not the author")
+      );
+
+      return [
+        myPostPolicy,
+        definePolicy("all my published posts", (post: Post) =>
+          and(check(myPostPolicy, post), post.status === "published")
+        ),
+      ];
+    });
+
+    const guard = {
+      post: PostPolicies({ userId: "1" }),
+    };
+
+    expect(check(guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "published" })).toBe(
+      true
+    );
+    expect(check(guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "draft" })).toBe(
+      false
+    );
+    expect(
+      check(guard.post.policy("all my published posts"), {
+        userId: "2",
+        comments: [],
+        status: "published",
+      })
+    ).toBe(false);
+
+    expect(() =>
+      assert(guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "published" })
+    ).not.toThrowError();
+    expect(() =>
+      assert(guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "draft" })
+    ).toThrowError();
+    expect(() =>
+      assert(guard.post.policy("all my published posts"), {
+        userId: "2",
+        comments: [],
+        status: "published",
+      })
+    ).toThrowError();
+  });
+});
