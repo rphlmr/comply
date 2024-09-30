@@ -23,25 +23,20 @@ type MyContext = { userId: string; rolesByOrg: Record<string, "user" | "admin" |
 ```
 ```typescript
 // define all your policies
-import { z } from 'zod';
-import { matchSchema, notNull, definePolicy, definePolicies, check, assert, or } from 'comply';
+import { assert, check, definePolicies, definePolicy, matchSchema, notNull, or } from "comply";
+import { z } from "zod";
 
 const OrgPolicies = definePolicies((context: MyContext) => (orgId: string) => {
   const currentUserOrgRole = context.rolesByOrg[orgId];
 
   return [
-    definePolicy("can administrate", () =>
-      or(
-        () => currentUserOrgRole === "admin",
-        () => currentUserOrgRole === "superadmin"
-      )
-    ),
-    definePolicy("is superadmin", () => currentUserOrgRole === "superadmin"),
+    definePolicy("can administrate", or(currentUserOrgRole === "admin", currentUserOrgRole === "superadmin")),
+    definePolicy("is superadmin", currentUserOrgRole === "superadmin"),
   ];
 });
 
 const UserPolicies = definePolicies((context: MyContext) => (userId: string) => [
-  definePolicy("can edit profile", () => context.userId === userId),
+  definePolicy("can edit profile", context.userId === userId),
 ]);
 
 // create and export a 'guard' that contains all your policies, scoped by domain
@@ -90,9 +85,11 @@ If the condition requires a parameter, `assert` and `check` will require it.
 
 Finally, if the condition is a type guard, the parameter you pass will be inferred automatically.
 
+Note: for convenience, the condition can be a boolean value but you will lose type inference.
+
 ## Defining Policies
 To define policies, you create a policy set using the `definePolicies` function.
-Each policy definition is created using the `definePolicy` function, which takes a policy name and a callback that defines the policy logic.
+Each policy definition is created using the `definePolicy` function, which takes a policy name and a callback that defines the policy logic (or a boolean value).
 The callback logic can receive a unique parameter (scalar or object) and return a boolean value or a a type predicate.
 
 You can also provide an error factory to the policy (3rd argument) to customize the error message.
@@ -108,9 +105,11 @@ _Primary use case_: simple policies that can be defined inline and are 'self-con
 
 ```typescript
 const policies = definePolicies([
+  // built-in type guards
   definePolicy("is not null", notNull),
+  definePolicy('params are valid', matchSchema(z.object({ name: z.string() }))),
+  // type guard
   definePolicy("is a string", (v: unknown): v is string => typeof v === "string"),
-  definePolicy('params are valid', matchSchema(z.object({ name: z.string() })))
 ]);
 ```
 
@@ -127,7 +126,7 @@ Here's a quick example:
 type Context = { userId: string; rolesByOrg: Record<string, "user" | "admin" | "superadmin">; appRole: "admin" | "user" };
 
 const AdminPolicies = definePolicies((context: Context) => [
-  definePolicy("has app admin role", () => context.appRole === "admin"),
+  definePolicy("has app admin role", context.appRole === "admin")
 ]);
 
 // 2️⃣
@@ -142,7 +141,7 @@ const OrgPolicies = definePolicies((context: MyContext) => (orgId: string) => {
         () => currentUserOrgRole === "superadmin",
         () => check(adminGuard.policy("has app admin role"))
     ),
-    definePolicy("is superadmin", () => currentUserOrgRole === "superadmin"),
+    definePolicy("is superadmin", currentUserOrgRole === "superadmin"), // lazy evaluation
   ];
 });
 
@@ -233,10 +232,7 @@ type Context = { userId: string; rolesByOrg: Record<string, "user" | "admin"> };
 
 const OrgPolicies = definePolicies((context: Context) => (orgId: string) => [
   definePolicy("can administrate org", (stillOrgAdmin: boolean) =>
-    and(
-      () => context.rolesByOrg[orgId] === "admin",
-      () => stillOrgAdmin
-    )
+    and(context.rolesByOrg[orgId] === "admin", stillOrgAdmin)
   ),
 ]);
 
@@ -277,7 +273,7 @@ type PolicyConditionTypeGuard<T = any, U extends T = T> = (arg: T) => arg is U;
 type PolicyConditionTypeGuardResult<P extends PolicyCondition> = P extends PolicyConditionTypeGuard<any, infer U>
   ? U
   : PolicyConditionArg<P>;
-type PolicyConditionNoArg = () => boolean;
+type PolicyConditionNoArg = (() => boolean) | boolean;
 type PolicyCondition<T = any, U extends T = T> =
   | PolicyConditionTypeGuard<T, U>
   | PolicyConditionWithArg<T>
@@ -418,6 +414,9 @@ const PostPolicies = definePolicies((context: Context) => {
         () => post.status === "published"
       )
     ),
+    definePolicy("[lazy] all published posts or mine", (post: Post) =>
+      or(check(myPostPolicy, post), post.status === "published")
+    ),
   ];
 });
 ```
@@ -448,6 +447,9 @@ const PostPolicies = definePolicies((context: Context) => {
         () => check(myPostPolicy, post),
         () => post.status === "published"
       )
+    ),
+    definePolicy("[lazy] my published post", (post: Post) =>
+      and(check(myPostPolicy, post), post.status === "published")
     ),
   ];
 });

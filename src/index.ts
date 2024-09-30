@@ -18,7 +18,7 @@ type PolicyConditionTypeGuardResult<P extends PolicyCondition> = P extends Polic
   ? U
   : PolicyConditionArg<P>;
 
-type PolicyConditionNoArg = () => boolean;
+type PolicyConditionNoArg = (() => boolean) | boolean;
 
 type PolicyCondition<T = any, U extends T = T> =
   | PolicyConditionTypeGuard<T, U>
@@ -55,7 +55,7 @@ class Policy<
   check(
     arg: TPolicyCondition extends PolicyConditionNoArg ? void : TPolicyConditionArg
   ): arg is TPolicyCondition extends PolicyConditionNoArg ? void : TResult {
-    return this.condition(arg);
+    return typeof this.condition === "boolean" ? this.condition : this.condition(arg);
   }
 }
 
@@ -340,34 +340,43 @@ export function and(
 /* --------------------------------- Assert; -------------------------------- */
 
 /**
- * Assert an implicit policy with a no-arg condition function
+ * Assert an implicit policy with a no-arg condition function (lazy evaluation) or a boolean value
  *
  * @param name - The name of the policy
- * @param condition - The condition to assert (no-arg)
+ * @param condition - The condition to assert (no-arg) or a boolean value
  *
  * @example
  * ```ts
  * const post = await getPost(id);
+ *
+ * // lazy evaluation
  * assert("post has comments", () => post.comments.length > 0);
+ *
+ * // boolean value
+ * assert("post has comments", post.comments.length > 0);
  * ```
  */
 export function assert(name: string, condition: PolicyConditionNoArg): void;
 
 /**
- * Assert an implicit policy with a condition function that takes an argument
+ * Assert an implicit policy with a condition function that takes an argument (lazy evaluation) or a boolean value
  *
  * The condition function can be a type guard or a predicate
  *
  * @param name - The name of the policy
- * @param condition - The condition to assert (with arg)
+ * @param condition - The condition to assert (with arg) or a boolean value
  * @param arg - The argument to pass to the condition
  *
  * @example
  * ```ts
+ * // lazy evaluation
  * assert("post has comments", (post: Post) => post.comments.length > 0, await getPost(id));
  *
  * // type guard
  * assert("post is draft", (post: Post): post is Post & { status: "draft" } => post.status === "draft", await getPost(id));
+ *
+ * // boolean value
+ * assert("post has comments",(await getPost(id)).comments.length > 0);
  * ```
  */
 export function assert<TPolicyCondition extends PolicyConditionTypeGuard<any> | PolicyConditionWithArg<any>>(
@@ -379,13 +388,15 @@ export function assert<TPolicyCondition extends PolicyConditionTypeGuard<any> | 
   : PolicyConditionTypeGuardResult<TPolicyCondition>;
 
 /**
- * Assert a policy with a no-arg condition function
+ * Assert a policy with a no-arg condition function (lazy evaluation) or a boolean value
  *
- * @param policy - The policy to assert
+ * @param policy - The policy to assert or a boolean value
  *
  * @example
  * ```ts
  * const AdminPolicies = definePolicies((context: Context) => [
+ *  definePolicy("is admin", context.role === "admin"),
+ *  // lazy evaluation
  *   definePolicy("is admin", () => context.role === "admin"),
  * ]);
  *
@@ -446,7 +457,7 @@ export function assert<TPolicyCondition extends PolicyCondition>(
     arg = args[0];
   }
 
-  if (policy.condition(arg)) {
+  if (typeof policy.condition === "boolean" ? policy.condition : policy.condition(arg)) {
     return;
   }
 
@@ -456,15 +467,22 @@ export function assert<TPolicyCondition extends PolicyCondition>(
 /* --------------------------------- Check; --------------------------------- */
 
 /**
- * Check an implicit policy with a no-arg condition function
+ * Check an implicit policy with a no-arg condition function or a boolean value
  *
  * @param name - The name of the policy
- * @param condition - The condition to check (no-arg)
+ * @param condition - The condition to check (no-arg) or a boolean value
  *
  * @example
  * ```ts
  * const post = await getPost(id);
+ *
+ * // lazy evaluation
  * if (check("post has comments", () => post.comments.length > 0)) {
+ *   // post has comments
+ * }
+ *
+ * // boolean value
+ * if (check("post has comments", post.comments.length > 0)) {
  *   // post has comments
  * }
  * ```
@@ -568,7 +586,7 @@ export function check<TPolicyCondition extends PolicyCondition>(
     arg = args[0];
   }
 
-  return policy.condition(arg);
+  return typeof policy.condition === "boolean" ? policy.condition : policy.condition(arg);
 }
 
 /* -------------------------------------------------------------------------- */

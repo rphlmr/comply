@@ -88,6 +88,14 @@ describe("Define policy", () => {
     expect(() => assert(truePolicy)).not.toThrowError();
   });
 
+  it("can define a policy with a boolean condition", () => {
+    const truePolicy = definePolicy("is true", true);
+
+    expect(truePolicy.check()).toBe(true);
+
+    expect(() => assert(truePolicy)).not.toThrowError();
+  });
+
   it("should allow defining a policy on the fly", () => {
     const params = { id: "123" };
 
@@ -287,7 +295,31 @@ describe("Define policies", () => {
     ).toThrowError();
   });
 
-  it("should define a policy set that composes other policy sets", () => {
+  it("should define a policy set that comprises other policy sets only", () => {
+    type Context = { role: "admin" | "user" | "bot" };
+
+    const AdminPolicies = definePolicies((context: Context) => [
+      definePolicy("has admin role", () => context.role === "admin"),
+    ]);
+
+    const PostPolicies = definePolicies((context: Context) => {
+      const adminGuard = AdminPolicies(context);
+
+      return [
+        definePolicy("can moderate comments", or(context.role === "bot", check(adminGuard.policy("has admin role")))),
+      ];
+    });
+
+    expect(check(PostPolicies({ role: "admin" }).policy("can moderate comments"))).toBe(true);
+    expect(check(PostPolicies({ role: "bot" }).policy("can moderate comments"))).toBe(true);
+    expect(check(PostPolicies({ role: "user" }).policy("can moderate comments"))).toBe(false);
+
+    expect(() => assert(PostPolicies({ role: "admin" }).policy("can moderate comments"))).not.toThrowError();
+    expect(() => assert(PostPolicies({ role: "bot" }).policy("can moderate comments"))).not.toThrowError();
+    expect(() => assert(PostPolicies({ role: "user" }).policy("can moderate comments"))).toThrowError();
+  });
+
+  it("should define a policy set that comprises other policy sets", () => {
     type Context = { userId: string; role: "admin" | "user" };
 
     const AdminPolicies = definePolicies((context: Context) => [
@@ -398,16 +430,20 @@ describe("Inference", () => {
 
     const label: Label = "label";
 
-    if (check(guard.input.policy("not null"), label)) {
-      expect(label).not.toBeNull();
-      expectTypeOf(label).toEqualTypeOf<string>();
+    function test(label: Label) {
+      if (check(guard.input.policy("not null"), label)) {
+        expect(label).not.toBeNull();
+        expectTypeOf(label).toEqualTypeOf<string>();
+      }
+
+      expect(() => {
+        assert(guard.input.policy("not null"), label);
+        expect(label).not.toBeNull();
+        expectTypeOf(label).toEqualTypeOf<string>();
+      }).not.toThrowError();
     }
 
-    expect(() => {
-      assert(guard.input.policy("not null"), label);
-      expect(label).not.toBeNull();
-      expectTypeOf(label).toEqualTypeOf<string>();
-    }).not.toThrowError();
+    test(label);
 
     expect.assertions(3);
   });
@@ -416,16 +452,20 @@ describe("Inference", () => {
     type Label = string | null;
     const label: Label = "label";
 
-    if (check("not null", notNull, label)) {
-      expect(label).not.toBeNull();
-      expectTypeOf(label).toEqualTypeOf<string>();
+    function test(label: Label) {
+      if (check("not null", notNull, label)) {
+        expect(label).not.toBeNull();
+        expectTypeOf(label).toEqualTypeOf<string>();
+      }
+
+      expect(() => {
+        assert("not null", notNull, label);
+        expect(label).not.toBeNull();
+        expectTypeOf(label).toEqualTypeOf<string>();
+      }).not.toThrowError();
     }
 
-    expect(() => {
-      assert("not null", notNull, label);
-      expect(label).not.toBeNull();
-      expectTypeOf(label).toEqualTypeOf<string>();
-    }).not.toThrowError();
+    test(label);
 
     expect.assertions(3);
   });
@@ -444,16 +484,20 @@ describe("Inference", () => {
 
     const post: Post = { userId: "1", comments: [], status: "published" };
 
-    if (check(guard.post.policy("published post"), post)) {
-      expect(post.status).toBe("published");
-      expectTypeOf(post.status).toEqualTypeOf<"published">();
+    function test(post: Post) {
+      if (check(guard.post.policy("published post"), post)) {
+        expect(post.status).toBe("published");
+        expectTypeOf(post.status).toEqualTypeOf<"published">();
+      }
+
+      expect(() => {
+        assert(guard.post.policy("published post"), post);
+        expect(post.status).toBe("published");
+        expectTypeOf(post.status).toEqualTypeOf<"published">();
+      }).not.toThrowError();
     }
 
-    expect(() => {
-      assert(guard.post.policy("published post"), post);
-      expect(post.status).toBe("published");
-      expectTypeOf(post.status).toEqualTypeOf<"published">();
-    }).not.toThrowError();
+    test(post);
 
     expect.assertions(3);
   });
@@ -463,23 +507,31 @@ describe("Inference", () => {
 
     const post: Post = { userId: "1", comments: [], status: "published" };
 
-    // type predicate
-    if (
-      check("published post", (post: Post): post is Post & { status: "published" } => post.status === "published", post)
-    ) {
-      expect(post.status).toBe("published");
-      expectTypeOf(post.status).toEqualTypeOf<"published">();
+    function test(post: Post) {
+      // type predicate
+      if (
+        check(
+          "published post",
+          (post: Post): post is Post & { status: "published" } => post.status === "published",
+          post
+        )
+      ) {
+        expect(post.status).toBe("published");
+        expectTypeOf(post.status).toEqualTypeOf<"published">();
+      }
+
+      expect(() => {
+        assert(
+          "published post",
+          (post: Post): post is Post & { status: "published" } => post.status === "published",
+          post
+        );
+        expect(post.status).toBe("published");
+        expectTypeOf(post.status).toEqualTypeOf<"published">();
+      }).not.toThrowError();
     }
 
-    expect(() => {
-      assert(
-        "published post",
-        (post: Post): post is Post & { status: "published" } => post.status === "published",
-        post
-      );
-      expect(post.status).toBe("published");
-      expectTypeOf(post.status).toEqualTypeOf<"published">();
-    }).not.toThrowError();
+    test(post);
 
     expect.assertions(3);
   });
@@ -500,16 +552,20 @@ describe("Inference", () => {
 
     const post: Post = { userId: "1", comments: [], status: "published" };
 
-    if (check(guard.post.policy("published post"), post)) {
-      expect(post.status).toBe("published");
-      expectTypeOf(post.status).toEqualTypeOf<"published">();
+    function test(post: Post) {
+      if (check(guard.post.policy("published post"), post)) {
+        expect(post.status).toBe("published");
+        expectTypeOf(post.status).toEqualTypeOf<"published">();
+      }
+
+      expect(() => {
+        assert(guard.post.policy("published post"), post);
+        expect(post.status).toBe("published");
+        expectTypeOf(post.status).toEqualTypeOf<"published">();
+      }).not.toThrowError();
     }
 
-    expect(() => {
-      assert(guard.post.policy("published post"), post);
-      expect(post.status).toBe("published");
-      expectTypeOf(post.status).toEqualTypeOf<"published">();
-    }).not.toThrowError();
+    test(post);
 
     expect.assertions(3);
   });
@@ -524,16 +580,20 @@ describe("Inference", () => {
 
     const post: Post = { userId: "1", comments: [], status: "published" };
 
-    if (check("published post", matchSchema(PostSchema.extend({ status: z.literal("published") })), post)) {
-      expect(post.status).toBe("published");
-      expectTypeOf(post.status).toEqualTypeOf<"published">();
+    function test(post: Post) {
+      if (check("published post", matchSchema(PostSchema.extend({ status: z.literal("published") })), post)) {
+        expect(post.status).toBe("published");
+        expectTypeOf(post.status).toEqualTypeOf<"published">();
+      }
+
+      expect(() => {
+        assert("published post", matchSchema(PostSchema.extend({ status: z.literal("published") })), post);
+        expect(post.status).toBe("published");
+        expectTypeOf(post.status).toEqualTypeOf<"published">();
+      }).not.toThrowError();
     }
 
-    expect(() => {
-      assert("published post", matchSchema(PostSchema.extend({ status: z.literal("published") })), post);
-      expect(post.status).toBe("published");
-      expectTypeOf(post.status).toEqualTypeOf<"published">();
-    }).not.toThrowError();
+    test(post);
 
     expect.assertions(3);
   });
