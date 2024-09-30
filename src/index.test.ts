@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { z } from "zod";
-import { assert, and, check, definePolicies, definePolicy, matchSchema, notNull, or } from ".";
+import { assert, and, check, checkAllSettle, definePolicies, definePolicy, matchSchema, notNull, or } from ".";
 
 describe("Define policy", () => {
   type Post = { userId: string; comments: string[] };
@@ -885,5 +885,65 @@ describe("Logical operators", () => {
         status: "published",
       })
     ).toThrowError();
+  });
+});
+
+describe("Check all settle", () => {
+  type Context = { userId: string };
+  type Post = { userId: string; comments: string[]; status: "published" | "draft" | "archived" };
+
+  it("should snapshot policies", () => {
+    const PostPolicies = definePolicies((context: Context) => {
+      const myPostPolicy = definePolicy(
+        "my post",
+        (post: Post) => post.userId === context.userId,
+        () => new Error("Not the author")
+      );
+
+      return [
+        myPostPolicy,
+        definePolicy("all my published posts", (post: Post) =>
+          and(check(myPostPolicy, post), post.status === "published")
+        ),
+      ];
+    });
+
+    const guard = {
+      post: PostPolicies({ userId: "1" }),
+    };
+
+    const snapshot = checkAllSettle([
+      [definePolicy("is not null", notNull), "not null"],
+      [definePolicy("is true", true)],
+      ["post has comments", true],
+      ["post has likes", () => true],
+      [guard.post.policy("my post"), { userId: "1", comments: [], status: "published" }],
+      [guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "published" }],
+    ]);
+
+    expect(snapshot).toStrictEqual({
+      "is not null": true,
+      "is true": true,
+      "post has comments": true,
+      "post has likes": true,
+      "my post": true,
+      "all my published posts": true,
+    });
+
+    expectTypeOf(snapshot).toEqualTypeOf<{
+      "is not null": boolean;
+      "is true": boolean;
+      "post has comments": boolean;
+      "post has likes": boolean;
+      "my post": boolean;
+      "all my published posts": boolean;
+    }>();
+
+    /** @ts-expect-error */
+    expectTypeOf(checkAllSettle([[definePolicy("is not null", notNull)]])).toEqualTypeOf<{ [x: string]: boolean }>();
+    /** @ts-expect-error */
+    expectTypeOf(checkAllSettle([[definePolicy("is true", true), "extra arg"]])).toEqualTypeOf<{
+      [x: string]: boolean;
+    }>();
   });
 });
