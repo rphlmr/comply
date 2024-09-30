@@ -409,21 +409,21 @@ Example:
 ```ts
 // TLDR
 const snapshot = checkAllSettle([
-  [guard.post.policy("my post"), post],
-  [guard.post.policy("all my published posts"), post],
+  [guard.post.policy("is my post"), post],
+  ["post has comments", post.comments.length > 0],
 ]);
 
 // Example
 const PostPolicies = definePolicies((context: Context) => {
   const myPostPolicy = definePolicy(
-    "my post",
+    "is my post",
     (post: Post) => post.userId === context.userId,
     () => new Error("Not the author")
   );
 
   return [
     myPostPolicy,
-    definePolicy("all published posts or mine", (post: Post) =>
+    definePolicy("published post or mine", (post: Post) =>
       or(check(myPostPolicy, post), post.status === "published")
     ),
   ];
@@ -434,13 +434,12 @@ const guard = {
 };
 
 const snapshot = checkAllSettle([
-  [guard.post.policy("my post"), post],
-  [guard.post.policy("all my published posts"), post],
+  [guard.post.policy("is my post"), post],
   ["post has comments", post.comments.length > 0],
 ]);
 
-console.log(snapshot); // { "my post": boolean; "all my published posts": boolean; "post has comments": boolean; }
-console.log(snapshot["my post"]) // boolean
+console.log(snapshot); // { "is my post": boolean; "post has comments": boolean; }
+console.log(snapshot["is my post"]) // boolean
 ```
 
 ### Condition helpers
