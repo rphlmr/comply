@@ -89,7 +89,7 @@ Finally, if the condition is a type guard, the parameter you pass will be inferr
 To define policies, you create a policy set using the `definePolicies` function.
 Each policy definition is created using the `definePolicy` function, which takes a policy name and a callback that defines the policy logic (or a boolean value).
 
-> [!IMPORTANT]  
+> [!IMPORTANT]
 > For convenience, the condition can be a boolean value but **you will lose type inference**
 >
 > If you want TS to infer something (not null, union, etc), use a condition function
@@ -393,6 +393,56 @@ if (check(guard.post.policy("post has comments"), post)) {
   console.log("Post has comments");
 }
 ```
+
+### `checkAllSettle`
+Evaluates all the policies with `check` and returns a snapshot with the results.
+
+It's useful to serialize policies.
+
+```ts
+export function checkAllSettle<TPolicies extends PolicyTuple[], TPolicyName extends TPolicies[number][0]["name"]>(
+  policies: TPolicies
+): PoliciesSnapshot<TPolicyName>
+```
+
+Example:
+```ts
+// TLDR
+const snapshot = checkAllSettle([
+  [guard.post.policy("my post"), post],
+  [guard.post.policy("all my published posts"), post],
+]);
+
+// Example
+const PostPolicies = definePolicies((context: Context) => {
+  const myPostPolicy = definePolicy(
+    "my post",
+    (post: Post) => post.userId === context.userId,
+    () => new Error("Not the author")
+  );
+
+  return [
+    myPostPolicy,
+    definePolicy("all published posts or mine", (post: Post) =>
+      or(check(myPostPolicy, post), post.status === "published")
+    ),
+  ];
+});
+
+const guard = {
+  post: PostPolicies(context),
+};
+
+const snapshot = checkAllSettle([
+  [guard.post.policy("my post"), post],
+  [guard.post.policy("all my published posts"), post],
+  ["post has comments", post.comments.length > 0],
+]);
+
+console.log(snapshot); // { "my post": boolean; "all my published posts": boolean; "post has comments": boolean; }
+console.log(snapshot["my post"]) // boolean
+```
+
 ### Condition helpers
 #### `or`
 Logical OR operator for policy conditions.

@@ -131,7 +131,7 @@ type PolicySetOrFactory<T extends PoliciesOrFactory> = T extends AnyPolicies
     ? (...args: Parameters<T>) => PolicySet<ReturnType<T>>
     : never;
 
-type WithRequiredContext<T> = T extends (arg: infer A) => any ? (unknown extends A ? never : T) : never;
+type WithRequiredArg<T> = T extends (arg: infer A) => any ? (unknown extends A ? never : T) : never;
 
 /**
  * Create a set of policies
@@ -222,7 +222,7 @@ export function definePolicies<T extends AnyPolicies>(policies: T): PolicySet<T>
  * ```
  */
 export function definePolicies<Context, T extends PoliciesOrFactory>(
-  define: WithRequiredContext<(context: Context) => T>
+  define: WithRequiredArg<(context: Context) => T>
 ): (context: Context) => PolicySetOrFactory<T>;
 
 export function definePolicies<Context, T extends PoliciesOrFactory>(defineOrPolicies: T | ((context: Context) => T)) {
@@ -587,6 +587,89 @@ export function check<TPolicyCondition extends PolicyCondition>(
   }
 
   return typeof policy.condition === "boolean" ? policy.condition : policy.condition(arg);
+}
+
+type PolicyTuple =
+  | readonly [string, PolicyConditionNoArg]
+  | readonly [Policy<string, PolicyConditionNoArg>]
+  | readonly [Policy<string, PolicyConditionWithArg>, any];
+
+type InferPolicyName<TPolicyTuple> = TPolicyTuple extends readonly [infer name, any]
+  ? name extends Policy<infer Name, any>
+    ? Name
+    : name extends string
+      ? name
+      : never
+  : TPolicyTuple extends readonly [Policy<infer Name, any>]
+    ? Name
+    : never;
+
+type PoliciesSnapshot<TPolicyName extends string> = { [K in TPolicyName]: boolean };
+
+/**
+ * Create a snapshot of policies and their evaluation results
+ *
+ * It evaluates all the policies with `check`
+ *
+ * @param policies - A tuple of policies and their arguments (if needed)
+ *
+ * @example
+ * ```ts
+ * // TLDR
+   const snapshot = checkAllSettle([
+    [guard.post.policy("my post"), post],
+    [guard.post.policy("all my published posts"), post],
+    ["post has comments", post.comments.length > 0],
+  ]);
+
+  // returns: { "my post": boolean; "all my published posts": boolean; "post has comments": boolean; }
+
+ * // Example
+  const PostPolicies = definePolicies((context: Context) => {
+    const myPostPolicy = definePolicy(
+      "my post",
+      (post: Post) => post.userId === context.userId,
+      () => new Error("Not the author")
+    );
+
+    return [
+      myPostPolicy,
+      definePolicy("all published posts or mine", (post: Post) =>
+        or(check(myPostPolicy, post), post.status === "published")
+      ),
+    ];
+  });
+
+  const guard = {
+    post: PostPolicies(context),
+  };
+
+  const snapshot = checkAllSettle([
+    [guard.post.policy("my post"), post],
+    [guard.post.policy("all my published posts"), post],
+    ["post has comments", post.comments.length > 0],
+  ]);
+
+  console.log(snapshot); // { "my post": boolean; "all my published posts": boolean; "post has comments": boolean; }
+ * ```
+ */
+export function checkAllSettle<
+  const TPolicies extends readonly PolicyTuple[],
+  TPolicyTuple extends TPolicies[number],
+  TPolicyName extends InferPolicyName<TPolicyTuple>,
+>(policies: TPolicies): PoliciesSnapshot<TPolicyName> {
+  return policies.reduce(
+    (acc, policyTuple) => {
+      const [policyOrName, arg] = policyTuple;
+      const policyName = typeof policyOrName === "string" ? policyOrName : policyOrName.name;
+
+      acc[policyName as TPolicyName] =
+        typeof policyOrName === "string" ? (typeof arg === "function" ? arg() : arg) : policyOrName.check(arg);
+
+      return acc;
+    },
+    {} as PoliciesSnapshot<TPolicyName>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
