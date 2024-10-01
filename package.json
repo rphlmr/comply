@@ -1,6 +1,6 @@
 {
   "name": "comply",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Comply is a tiny library to help you define policies in your app",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
