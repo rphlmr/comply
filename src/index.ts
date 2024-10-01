@@ -623,9 +623,9 @@ type PoliciesSnapshot<TPolicyName extends string> = { [K in TPolicyName]: boolea
  * ```ts
  * // TLDR
   const snapshot = checkAllSettle([
-    [guard.post.policy("is my post"), post],
-    ["post has comments", post.comments.length > 0],
-    definePolicy("post has likes", post.likes.length > 0),
+    [guard.post.policy("is my post"), post], // Policy with argument
+    ["post has comments", post.comments.length > 0], // Implicit policy with no argument
+    definePolicy("post has likes", post.likes.length > 0), // Policy without argument. Can be used as is
   ]);
 
 // Example
