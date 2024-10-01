@@ -399,18 +399,41 @@ Evaluates all the policies with `check` and returns a snapshot with the results.
 
 It's useful to serialize policies.
 
+It takes an array of policies. If a policy does not take an argument, it can be passed as is. Policies that take an argument have to be passed as a tuple with the argument.
+
 ```ts
-export function checkAllSettle<TPolicies extends PolicyTuple[], TPolicyName extends TPolicies[number][0]["name"]>(
-  policies: TPolicies
-): PoliciesSnapshot<TPolicyName>
+type PolicyTuple =
+  | Policy<string, PolicyConditionNoArg>
+  | readonly [string, PolicyConditionNoArg]
+  | readonly [Policy<string, PolicyConditionNoArg>]
+  | readonly [Policy<string, PolicyConditionWithArg>, any];
+type InferPolicyName<TPolicyTuple> = TPolicyTuple extends readonly [infer name, any]
+  ? name extends Policy<infer Name, any>
+    ? Name
+    : name extends string
+      ? name
+      : never
+  : TPolicyTuple extends readonly [Policy<infer Name, any>]
+    ? Name
+    : TPolicyTuple extends Policy<infer Name, any>
+      ? Name
+      : never;
+type PoliciesSnapshot<TPolicyName extends string> = { [K in TPolicyName]: boolean };
+
+export function checkAllSettle<
+  const TPolicies extends readonly PolicyTuple[],
+  TPolicyTuple extends TPolicies[number],
+  TPolicyName extends InferPolicyName<TPolicyTuple>,
+>(policies: TPolicies): PoliciesSnapshot<TPolicyName>
 ```
 
 Example:
 ```ts
 // TLDR
 const snapshot = checkAllSettle([
-  [guard.post.policy("is my post"), post],
-  ["post has comments", post.comments.length > 0],
+  [guard.post.policy("is my post"), post], // Policy with argument
+  ["post has comments", post.comments.length > 0], // Implicit policy with no argument
+  definePolicy("post has likes", post.likes.length > 0), // Policy without argument
 ]);
 
 // Example
@@ -436,9 +459,10 @@ const guard = {
 const snapshot = checkAllSettle([
   [guard.post.policy("is my post"), post],
   ["post has comments", post.comments.length > 0],
+  definePolicy("post has likes", post.likes.length > 0),
 ]);
 
-console.log(snapshot); // { "is my post": boolean; "post has comments": boolean; }
+console.log(snapshot); // { "is my post": boolean; "post has comments": boolean; "post has likes": boolean }
 console.log(snapshot["is my post"]) // boolean
 ```
 

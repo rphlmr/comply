@@ -895,14 +895,14 @@ describe("Check all settle", () => {
   it("should snapshot policies", () => {
     const PostPolicies = definePolicies((context: Context) => {
       const myPostPolicy = definePolicy(
-        "my post",
+        "shared policy within policy set",
         (post: Post) => post.userId === context.userId,
         () => new Error("Not the author")
       );
 
       return [
         myPostPolicy,
-        definePolicy("all my published posts", (post: Post) =>
+        definePolicy("policy from policy set", (post: Post) =>
           and(check(myPostPolicy, post), post.status === "published")
         ),
       ];
@@ -913,36 +913,63 @@ describe("Check all settle", () => {
     };
 
     const snapshot = checkAllSettle([
-      [definePolicy("is not null", notNull), "not null"],
-      [definePolicy("is true", true)],
-      ["post has comments", true],
-      ["post has likes", () => true],
-      [guard.post.policy("my post"), { userId: "1", comments: [], status: "published" }],
-      [guard.post.policy("all my published posts"), { userId: "1", comments: [], status: "published" }],
+      [definePolicy("policy with arg", notNull), "not null"],
+      ["implicit policy with arg", notNull, "not null"],
+      [definePolicy("policy with no arg", true)],
+      definePolicy("policy with no arg simple version", true),
+      ["implicit policy with boolean", true],
+      ["implicit policy with no arg function", () => true],
+      [guard.post.policy("shared policy within policy set"), { userId: "1", comments: [], status: "published" }],
+      [guard.post.policy("policy from policy set"), { userId: "1", comments: [], status: "published" }],
     ]);
 
     expect(snapshot).toStrictEqual({
-      "is not null": true,
-      "is true": true,
-      "post has comments": true,
-      "post has likes": true,
-      "my post": true,
-      "all my published posts": true,
+      "policy with arg": true,
+      "implicit policy with arg": true,
+      "policy with no arg": true,
+      "policy with no arg simple version": true,
+      "implicit policy with boolean": true,
+      "implicit policy with no arg function": true,
+      "shared policy within policy set": true,
+      "policy from policy set": true,
     });
 
     expectTypeOf(snapshot).toEqualTypeOf<{
-      "is not null": boolean;
-      "is true": boolean;
-      "post has comments": boolean;
-      "post has likes": boolean;
-      "my post": boolean;
-      "all my published posts": boolean;
+      "policy with arg": boolean;
+      "implicit policy with arg": boolean;
+      "policy with no arg": boolean;
+      "policy with no arg simple version": boolean;
+      "implicit policy with boolean": boolean;
+      "implicit policy with no arg function": boolean;
+      "shared policy within policy set": boolean;
+      "policy from policy set": boolean;
     }>();
 
-    /** @ts-expect-error */
-    expectTypeOf(checkAllSettle([[definePolicy("is not null", notNull)]])).toEqualTypeOf<{ [x: string]: boolean }>();
-    /** @ts-expect-error */
-    expectTypeOf(checkAllSettle([[definePolicy("is true", true), "extra arg"]])).toEqualTypeOf<{
+    expectTypeOf(
+      checkAllSettle([
+        [
+          /** @ts-expect-error */
+          definePolicy("is not null", notNull),
+        ],
+      ])
+    ).toEqualTypeOf<{ [x: string]: boolean }>();
+    expectTypeOf(
+      checkAllSettle([
+        [
+          /** @ts-expect-error */
+          definePolicy("is true", true),
+          "extra arg",
+        ],
+      ])
+    ).toEqualTypeOf<{
+      [x: string]: boolean;
+    }>();
+    expectTypeOf(
+      checkAllSettle([
+        /** @ts-expect-error */
+        definePolicy("is true", (v: unknown) => true),
+      ])
+    ).toEqualTypeOf<{
       [x: string]: boolean;
     }>();
   });
